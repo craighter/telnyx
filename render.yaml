@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: telnyx-webhook
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python app.py"
+    envVars:
+      - key: TELNYX_API_KEY
+        value: YOUR_TELNYX_API_KEY
+      - key: NUMLOOKUP_API_KEY
+        value: YOUR_NUMLOOKUP_API_KEY
+    autoDeploy: true
+    branch: main
+    healthCheckPath: /
