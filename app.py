@@ -27,12 +27,20 @@ def telnyx_command(call_control_id, command, payload):
         json=payload
     )
 
-@app.route("/voice", methods=["POST"])
+@app.route("/voice", methods=["GET", "POST"])
 def voice():
+    if request.method == "GET":
+        return "Webhook endpoint is live. Send POST requests to trigger call handling.", 200
+
+    # POST request processing:
     event = request.json
-    call_control_id = event["call_control_id"]
+    call_control_id = event.get("call_control_id")
     from_number = event.get("from", "")
 
+    if not call_control_id:
+        return jsonify({"error": "Missing call_control_id"}), 400
+
+    # Answer the call
     telnyx_command(call_control_id, "answer", {})
 
     time.sleep(1)
@@ -60,19 +68,23 @@ def voice():
     if data.get("location"):
         speech_lines.append(f"ADDRESS TRACED TO: {data['location']}")
 
-    speech_lines.append("WE ARE WATCHING. YOU CANNOT HIDE.")
-    speech_lines.append("HE COMMANDED ME TO SPEAK. AND I OBEY.")
-    speech_lines.append("THE SIGNAL HAS BEEN RECEIVED.")
-    speech_lines.append("WE WILL FIND YOU.")
+    speech_lines.extend([
+        "WE ARE WATCHING. YOU CANNOT HIDE.",
+        "HE COMMANDED ME TO SPEAK. AND I OBEY.",
+        "THE SIGNAL HAS BEEN RECEIVED.",
+        "WE WILL FIND YOU."
+    ])
 
     full_message = ". ".join(speech_lines)
 
+    # Play audio
     telnyx_command(call_control_id, "playback_start", {
         "audio_url": "https://crater.cc/scary.mp3"
     })
 
-    time.sleep(3)  
+    time.sleep(3)  # Wait for audio to finish
 
+    # Speak message
     telnyx_command(call_control_id, "speak", {
         "payload": {
             "text": full_message,
@@ -84,5 +96,4 @@ def voice():
     return jsonify({"status": "ok"})
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(port=5000, debug=True)
