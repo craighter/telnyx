@@ -7,6 +7,7 @@ app = Flask(__name__)
 
 NUMLOOKUP_API_KEY = os.environ.get("NUMLOOKUP_API_KEY")
 NUMLOOKUP_API_URL = "https://api.numlookupapi.com/v1/validate"
+
 TELNYX_API_KEY = os.environ.get("TELNYX_API_KEY")
 CALL_CONTROL_BASE = "https://api.telnyx.com/v2/calls"
 
@@ -20,19 +21,18 @@ def convert_digit(c):
     return digit_map.get(c, c)
 
 def telnyx_command(call_control_id, command, payload):
-    response = requests.post(
+    return requests.post(
         f"{CALL_CONTROL_BASE}/{call_control_id}/actions/{command}",
         headers={"Authorization": f"Bearer {TELNYX_API_KEY}"},
-        json=payload,
-        timeout=10
+        json=payload
     )
-    return response
 
 @app.route("/voice", methods=["POST"])
 def voice():
     event = request.json
     call_control_id = event.get("call_control_id")
     from_number = event.get("from", "")
+
     if not call_control_id:
         return jsonify({"error": "Missing call_control_id"}), 400
 
@@ -51,7 +51,7 @@ def voice():
         val = data[key]
         if val not in (None, "", False):
             label = key.replace("_", " ").upper()
-            if isinstance(val, str) and any(c.isdigit() for c in val):
+            if isinstance(val, str) and any(char.isdigit() for char in val):
                 spoken_val = " ".join(convert_digit(c) for c in val if c.strip())
             else:
                 spoken_val = str(val)
@@ -69,7 +69,10 @@ def voice():
 
     full_message = ". ".join(speech_lines)
 
-    telnyx_command(call_control_id, "playback_start", {"audio_url": "https://crater.cc/scary.mp3"})
+    telnyx_command(call_control_id, "playback_start", {
+        "audio_url": "https://crater.cc/scary.mp3"
+    })
+
     time.sleep(3)
 
     telnyx_command(call_control_id, "speak", {
@@ -83,4 +86,5 @@ def voice():
     return jsonify({"status": "ok"})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
