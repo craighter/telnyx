@@ -21,17 +21,24 @@ def convert_digit(c):
     return digit_map.get(c, c)
 
 def telnyx_command(call_control_id, command, payload):
-    return requests.post(
+    resp = requests.post(
         f"{CALL_CONTROL_BASE}/{call_control_id}/actions/{command}",
-        headers={"Authorization": f"Bearer {TELNYX_API_KEY}"},
+        headers={
+            "Authorization": f"Bearer {TELNYX_API_KEY}",
+            "Content-Type": "application/json"
+        },
         json=payload
     )
+
+    print(f"Telnyx {command} status: {resp.status_code}, response: {resp.text}")
+    return resp
 
 @app.route("/voice", methods=["POST"])
 def voice():
     event = request.json
-    call_control_id = event.get("call_control_id")
-    from_number = event.get("from", "")
+
+    call_control_id = event.get("data", {}).get("payload", {}).get("call_control_id")
+    from_number = event.get("data", {}).get("payload", {}).get("from")
 
     if not call_control_id:
         return jsonify({"error": "Missing call_control_id"}), 400
@@ -43,7 +50,8 @@ def voice():
     try:
         resp = requests.get(full_api_url, timeout=5)
         data = resp.json() if resp.status_code == 200 else {}
-    except:
+    except Exception as e:
+        print(f"Numlookup error: {e}")
         data = {}
 
     speech_lines = ["YOUR IDENTITY IS REVEALED."]
